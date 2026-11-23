@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.netlify/
+# Kişisel veri: yedekler ve gerçek veriyle alınan ekran görüntüleri repoya girmez
+supabase/yedek/
+docs/ekran-gercek/
+*.local
+.env*
+!.env.example

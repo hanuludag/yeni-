@@ -1,0 +1,25 @@
+{
+  "name": "emirhan-takip",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --port 4173",
+    "test": "vitest run",
+    "ekran": "node scripts/ekran.mjs",
+    "e2e:db": "NODE_USE_ENV_PROXY=1 node scripts/e2e-db.mjs",
+    "e2e:ui": "node scripts/e2e-ui.mjs",
+    "yedek": "NODE_USE_ENV_PROXY=1 node scripts/yedek.mjs"
+  },
+  "dependencies": {
+    "preact": "^10.29.8"
+  },
+  "devDependencies": {
+    "@preact/preset-vite": "^2.10.6",
+    "typescript": "^7.0.2",
+    "vite": "^6.4.6",
+    "vitest": "^3.2.7"
+  }
+}
