@@ -11,6 +11,7 @@ import { CizgiGrafik, Lejant } from '../bilesenler/Grafik';
 import { Tik } from '../bilesenler/Ikonlar';
 import { ListeDuzenleyici } from '../bilesenler/ListeDuzenleyici';
 import { ApiHata } from '../lib/api';
+import { ParaKarti } from './para/AnaKart';
 
 export function AnaEkran({ ust }: { ust: ComponentChildren }) {
   const d = useDepo();
@@ -33,6 +34,7 @@ export function AnaEkran({ ust }: { ust: ComponentChildren }) {
 
       <RutinKarti />
       <OzetSerit gunler={gunler} gun={gun} son={son} />
+      <ParaKarti />
       <Trend gunler={gunler} son={son} />
     </main>
   );

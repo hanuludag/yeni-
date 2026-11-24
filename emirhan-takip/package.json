@@ -11,7 +11,11 @@
     "ekran": "node scripts/ekran.mjs",
     "e2e:db": "NODE_USE_ENV_PROXY=1 node scripts/e2e-db.mjs",
     "e2e:ui": "node scripts/e2e-ui.mjs",
-    "yedek": "NODE_USE_ENV_PROXY=1 node scripts/yedek.mjs"
+    "yedek": "NODE_USE_ENV_PROXY=1 node scripts/yedek.mjs",
+    "ekran:para": "node scripts/ekran-para.mjs",
+    "e2e:para": "node scripts/e2e-para.mjs",
+    "e2e:para-db": "NODE_USE_ENV_PROXY=1 vite-node scripts/e2e-para-db.mts",
+    "kur:test": "NODE_USE_ENV_PROXY=1 node --experimental-strip-types scripts/kur-test.mts"
   },
   "dependencies": {
     "preact": "^10.29.8"

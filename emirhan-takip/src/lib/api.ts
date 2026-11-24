@@ -13,7 +13,7 @@ const ZAMAN_ASIMI_MS = 15000;
 export type HataTuru = 'baglanti' | 'sunucu' | 'cakisma';
 
 export class ApiHata extends Error {
-  constructor(public tur: HataTuru, mesaj: string, public durum?: number) {
+  constructor(public tur: HataTuru, mesaj: string, public durum?: number, public kod?: string) {
     super(mesaj);
   }
 }
@@ -26,7 +26,7 @@ export const MESAJ = {
 
 export interface Satir<T> { veri: T; updated_at: string }
 
-async function istek<T>(yol: string, ayar: RequestInit & { prefer?: string } = {}): Promise<{ veri: T; durum: number }> {
+export async function istek<T>(yol: string, ayar: RequestInit & { prefer?: string } = {}): Promise<{ veri: T; durum: number }> {
   const kontrol = new AbortController();
   const zamanlayici = setTimeout(() => kontrol.abort(), ZAMAN_ASIMI_MS);
   const basliklar: Record<string, string> = {
@@ -42,7 +42,12 @@ async function istek<T>(yol: string, ayar: RequestInit & { prefer?: string } = {
   } finally {
     clearTimeout(zamanlayici);
   }
-  if (yanit.status === 409) throw new ApiHata('cakisma', MESAJ.cakisma, 409);
+  if (yanit.status === 409) {
+    let kod: string | undefined;
+    try { kod = (await yanit.json())?.code; } catch { /* gövde yok */ }
+    // 23503: bağlı kayıt var (yabancı anahtar), 23505: aynı kayıt zaten var
+    throw new ApiHata('cakisma', kod === '23503' ? 'Bu kayda bağlı başka kayıtlar var.' : MESAJ.cakisma, 409, kod);
+  }
   if (!yanit.ok) throw new ApiHata('sunucu', MESAJ.sunucu(yanit.status), yanit.status);
   const metin = await yanit.text();
   return { veri: (metin ? JSON.parse(metin) : null) as T, durum: yanit.status };

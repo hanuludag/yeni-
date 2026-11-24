@@ -58,6 +58,31 @@ Supabase projesi `takip` (eu-central-1), `public` şema. Bağlantı bilgisi `.en
 
 Tarayıcı, son başarılı yüklemeyi ve kaydedilmemiş günlük taslaklarını `localStorage`'da tutar (bağlantı yokken girdi kaybolmaz).
 
+## Para bölümü
+
+Ayrıntılar: [PLAN-PARA.md](PLAN-PARA.md).
+
+| Tablo | İçerik |
+|---|---|
+| `para_hesap` | hesaplar (nakit, banka, kart, birikim; ₺/$), açılış bakiyesi, limit, kesim günü, arşiv |
+| `para_islem` | gider, gelir, transfer (iki para birimi için `tutar` + `giren_tutar`) |
+| `para_butce` | kategori başına aylık limit |
+| `para_abonelik`, `para_abonelik_odeme` | abonelikler ve ay ay "Ödendi" işaretleri (RPC: `para_abonelik_ode`, `para_abonelik_geri_al`) |
+| `para_hedef` | birikim hedefleri |
+
+Bakiyeler veritabanında tutulmaz: açılış bakiyesi + işlemlerden hesaplanır. Kategoriler `takip_ayar.para_kategoriler`,
+son dolar kuru `takip_ayar.kur_usd_try` içinde.
+
+Dolar kuru tarayıcıdan anahtarsız alınır: önce `open.er-api.com` (ExchangeRate-API), olmazsa Frankfurter, o da olmazsa
+jsDelivr'deki currency-api. En fazla 15 dakikada bir yenilenir; alınamazsa son bilinen kur gösterilir ve elle girilebilir.
+
+```bash
+npm run e2e:para     # (preview açıkken) Para arayüz senaryoları, sahte veriyle
+npm run ekran:para   # (preview açıkken) Para ekran görüntüleri → docs/ekran/
+npm run e2e:para-db  # gerçek veritabanı: test_ satırları yaz/oku/sil
+npm run kur:test     # kur kaynaklarını gerçek ağda dene
+```
+
 ## Yedek
 
 ```bash

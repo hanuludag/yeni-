@@ -11,6 +11,8 @@ if (existsSync('.env.local')) {
     if (m && !process.env[m[1]]) process.env[m[1]] = m[2];
   }
 }
+import { BOS_PARA } from './para-ornek.mjs';
+export { paraOrnek } from './para-ornek.mjs';
 export const SUPABASE = process.env.VITE_SUPABASE_URL;
 export const ANAHTAR = process.env.VITE_SUPABASE_ANAHTAR;
 if (!SUPABASE || !ANAHTAR) throw new Error('.env.local içinde VITE_SUPABASE_URL ve VITE_SUPABASE_ANAHTAR olmalı');
@@ -73,7 +75,19 @@ export async function sahteSupabase(page, secenek = {}) {
     rutin: {},
     istekler: [],
     hata: secenek.hata,
+    para: secenek.para ?? BOS_PARA(),
+    kurHata: secenek.kurHata ?? false,
   };
+  db.ayar.push({ anahtar: 'para_kategoriler', veri: { gider: ['Yemek', 'Market', 'Ulaşım', 'Fatura', 'Abonelik', 'Eğitim', 'Kişisel bakım', 'Diğer'], gelir: ['Harçlık', 'Diğer gelir'] }, updated_at: '2026-11-01T00:00:00+00:00' });
+  if (secenek.kur) db.ayar.push({ anahtar: 'kur_usd_try', veri: secenek.kur, updated_at: '2026-11-01T00:00:00+00:00' });
+  // Döviz kuru kaynakları (sahte): 50,52 ya da hata
+  const kurYanit = { 'open.er-api.com': { result: 'success', rates: { TRY: 50.52 } }, 'api.frankfurter.dev': { rates: { TRY: 50.52 } }, 'cdn.jsdelivr.net': { usd: { try: 50.52 } } };
+  for (const [host, govde] of Object.entries(kurYanit)) {
+    await page.route(`https://${host}/**`, (route) => {
+      db.istekler.push(`KUR ${host}`);
+      return db.kurHata ? route.abort('internetdisconnected') : route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(govde) });
+    });
+  }
   let sayac = 0;
   await page.route(`${SUPABASE}/rest/v1/**`, async (route) => {
     const req = route.request();
@@ -122,6 +136,61 @@ export async function sahteSupabase(page, secenek = {}) {
         const b = JSON.parse(req.postData());
         db.rutin[b.tarih] = b.veri;
         return route.fulfill({ status: 201, body: '' });
+      }
+    }
+    if (tablo === 'takip_ayar' && req.method() === 'POST') {
+      const b = JSON.parse(req.postData());
+      const v = db.ayar.find((x) => x.anahtar === b.anahtar);
+      if (v) { v.veri = b.veri; v.updated_at = yeniZaman(); } else db.ayar.push({ ...b, updated_at: yeniZaman() });
+      return json([db.ayar.find((x) => x.anahtar === b.anahtar)], 201);
+    }
+    const P = db.para;
+    if (url.pathname.endsWith('/rpc/para_abonelik_ode')) {
+      const b = JSON.parse(req.postData());
+      if (P.para_abonelik_odeme.some((o) => o.abonelik_id === b.p_abonelik && o.ay === b.p_ay)) return json({ code: '23505' }, 409);
+      const a = P.para_abonelik.find((x) => x.id === b.p_abonelik);
+      P.para_islem.unshift({ id: b.p_islem, tarih: b.p_tarih, tur: 'gider', kategori: a.kategori, hesap_id: a.hesap_id, hedef_hesap_id: null, tutar: a.tutar, giren_tutar: null, nota: a.ad, abonelik_id: a.id, updated_at: yeniZaman() });
+      P.para_abonelik_odeme.push({ abonelik_id: a.id, ay: b.p_ay, islem_id: b.p_islem });
+      return json(b.p_islem);
+    }
+    if (url.pathname.endsWith('/rpc/para_abonelik_geri_al')) {
+      const b = JSON.parse(req.postData());
+      const o = P.para_abonelik_odeme.find((x) => x.abonelik_id === b.p_abonelik && x.ay === b.p_ay);
+      if (o) { P.para_islem = P.para_islem.filter((i) => i.id !== o.islem_id); P.para_abonelik_odeme = P.para_abonelik_odeme.filter((x) => x !== o); }
+      return route.fulfill({ status: 204, body: '' });
+    }
+    if (tablo in P) {
+      const pk = tablo === 'para_butce' ? 'kategori' : 'id';
+      const f = (k) => url.searchParams.get(k)?.replace(/^eq\./, '');
+      const eslesir = (r) => (!f(pk) || String(r[pk]) === f(pk)) && (!f('updated_at') || r.updated_at === f('updated_at'));
+      if (req.method() === 'GET') {
+        let r = P[tablo].filter(eslesir);
+        if (tablo === 'para_islem') r = [...r].sort((a, b) => b.tarih.localeCompare(a.tarih));
+        return json(r);
+      }
+      if (req.method() === 'POST') {
+        const b = JSON.parse(req.postData());
+        const v = P[tablo].find((r) => r[pk] === b[pk]);
+        if (v && !url.searchParams.get('on_conflict')) return json({ code: '23505' }, 409);
+        if (tablo === 'para_islem' && !P.para_hesap.some((h) => h.id === b.hesap_id)) return json({ code: '23503' }, 409);
+        const yeni = { ...(v ?? {}), ...b, updated_at: yeniZaman() };
+        if (tablo === 'para_hesap') Object.assign(yeni, { limit_tutar: yeni.limit_tutar ?? null, kesim_gunu: yeni.kesim_gunu ?? null, arsiv: yeni.arsiv ?? false, sira: yeni.sira ?? 0, para_birimi: yeni.para_birimi ?? 'TRY', acilis_bakiyesi: yeni.acilis_bakiyesi ?? 0 });
+        if (tablo === 'para_islem') Object.assign(yeni, { hedef_hesap_id: yeni.hedef_hesap_id ?? null, giren_tutar: yeni.giren_tutar ?? null, nota: yeni.nota ?? null, abonelik_id: yeni.abonelik_id ?? null });
+        if (tablo === 'para_abonelik') Object.assign(yeni, { aktif: yeni.aktif ?? true, para_birimi: yeni.para_birimi ?? 'TRY' });
+        if (v) Object.assign(v, yeni); else P[tablo].push(yeni);
+        return json([v ?? yeni], 201);
+      }
+      if (req.method() === 'PATCH') {
+        const r = P[tablo].filter(eslesir);
+        for (const x of r) Object.assign(x, JSON.parse(req.postData()), { updated_at: yeniZaman() });
+        return json(r);
+      }
+      if (req.method() === 'DELETE') {
+        const r = P[tablo].filter(eslesir);
+        if (tablo === 'para_hesap' && r.some((h) => P.para_islem.some((i) => i.hesap_id === h.id || i.hedef_hesap_id === h.id))) return json({ code: '23503' }, 409);
+        P[tablo] = P[tablo].filter((x) => !r.includes(x));
+        if (tablo === 'para_islem') P.para_abonelik_odeme = P.para_abonelik_odeme.filter((o) => !r.some((x) => x.id === o.islem_id));
+        return json(r);
       }
     }
     return json({ message: 'bilinmeyen' }, 404);

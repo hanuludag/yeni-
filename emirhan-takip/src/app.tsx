@@ -6,12 +6,14 @@ import { AnaEkran } from './ekranlar/AnaEkran';
 import { Gunluk } from './ekranlar/Gunluk';
 import { Aylik } from './ekranlar/Aylik';
 import { Rutinler } from './ekranlar/Rutinler';
+import { Para } from './ekranlar/para/Para';
 
 const SEKMELER = [
   { sayfa: 'ana', ad: 'Ana ekran', href: '#/' },
   { sayfa: 'gunluk', ad: 'Günlük', href: '#/gunluk' },
   { sayfa: 'aylik', ad: 'Aylık', href: '#/aylik' },
   { sayfa: 'rutinler', ad: 'Rutinler', href: '#/rutinler' },
+  { sayfa: 'para', ad: 'Para', href: '#/para' },
 ] as const;
 
 export function App() {
@@ -25,7 +27,10 @@ export function App() {
   }, [rota.sayfa]);
 
   let icerik;
-  if (d.ilkYukleme === 'yukleniyor') {
+  if (rota.sayfa === 'para') {
+    // Para kendi verisini ve durumlarını yönetir (takip verisi yüklenmese de çalışır)
+    icerik = <Para gorunum={rota.gorunum} id={rota.id} />;
+  } else if (d.ilkYukleme === 'yukleniyor') {
     icerik = <main><Yukleniyor satir={5} /></main>;
   } else if (d.ilkYukleme === 'hata') {
     icerik = <main><BaglantiHatasi mesaj={d.hata ?? 'Bağlantı yok.'} onTekrar={() => yenile(true)} /></main>;
@@ -42,7 +47,7 @@ export function App() {
       <header class="ust">
         <div class="ust-ic">
           <a class="marka" href="#/">Günlük Takip</a>
-          <nav class="sekmeler" aria-label="Bölümler">
+          <nav class="sekmeler bes" aria-label="Bölümler">
             {SEKMELER.map((s) => (
               <a key={s.sayfa} class="sekme" href={s.href} aria-current={s.sayfa === rota.sayfa ? 'page' : undefined}>
                 {s.ad}
